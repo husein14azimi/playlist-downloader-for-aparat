@@ -1,0 +1,5 @@
+{
+  "extName": { "message": "Playlist Downloader for Aparat" },
+  "extDescription": { "message": "Download every video of an Aparat playlist, in order, at the quality you choose." },
+  "actionTitle": { "message": "Playlist Downloader for Aparat" }
+}
