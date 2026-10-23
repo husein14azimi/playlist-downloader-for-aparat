@@ -3,6 +3,11 @@
 Downloads every video of an Aparat playlist, in playlist order, into
 `Downloads/Aparat/<playlist title>/NN - <video title>.mp4` (NN is zero-padded: 2 digits, 3 from 100 videos, 4 from 1000).
 
+## Screenshots
+
+![Screenshot #1](https://raw.githubusercontent.com/husein14azimi/playlist-downloader-for-aparat/main/docs/screenshots/1.jpg)
+![Screenshot #2](https://raw.githubusercontent.com/husein14azimi/playlist-downloader-for-aparat/main/docs/screenshots/2.jpg)
+
 ## Install (Firefox 140 or newer)
 Quick test (removed when Firefox restarts):
 1. Open `about:debugging#/runtime/this-firefox`.
