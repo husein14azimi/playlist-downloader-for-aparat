@@ -6,7 +6,7 @@ Downloads every video of an Aparat playlist, in playlist order, into
 ## Screenshots
 
 ![Screenshot #1](https://raw.githubusercontent.com/husein14azimi/playlist-downloader-for-aparat/main/docs/screenshots/1.jpg)
-<br><br>
+<br><br><br><br>
 ![Screenshot #2](https://raw.githubusercontent.com/husein14azimi/playlist-downloader-for-aparat/main/docs/screenshots/2.jpg)
 
 ## Install (Firefox 140 or newer)
