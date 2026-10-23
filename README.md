@@ -12,13 +12,7 @@ Downloads every video of an Aparat playlist, in playlist order, into
 ## Install (Firefox 140 or newer)
 Quick test (removed when Firefox restarts):
 1. Open `about:debugging#/runtime/this-firefox`.
-2. Click **Load Temporary Add-on** and pick `manifest.json` from the unzipped folder (or pick the zip itself).
-
-Permanent install: regular Firefox only keeps signed add-ons. Upload this zip to https://addons.mozilla.org/developers/
-as **On your own** (unlisted) to get a signed `.xpi`, then open it in Firefox (about:addons, gear icon, *Install Add-on From File*).
-Firefox Developer Edition and Nightly can instead set `xpinstall.signatures.required` to `false` in `about:config`.
-
-If the playlist will not load, open `about:addons`, select this add-on, open **Permissions**, and make sure access to `www.aparat.com` is on.
+2. Click **Load Temporary Add-on** and pick the extension zip file (dowloaded from the releases or zipped the downloaded source code)
 
 ## Use
 Click the toolbar icon (on an Aparat playlist page the link is filled in for you), or paste a link such as
