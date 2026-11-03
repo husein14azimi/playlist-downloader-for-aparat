@@ -17,7 +17,9 @@ Quick test (removed when Firefox restarts):
 ## Use
 Click the toolbar icon (on an Aparat playlist page the link is filled in for you), or paste a link such as
 `https://www.aparat.com/playlist/1301084/`, then **Load playlist** and **Download selected**.
-Keep the tab open while it runs. Clicking **Download selected** again retries only the videos that failed.
+Keep the tab open while it runs. **Stop** cancels pending link requests, retry waits and active downloads.
+Clicking **Download selected** again retries unfinished videos; completed files and videos with downloads disabled are skipped.
+The link field accepts Aparat playlist URLs, video URLs with a `playlist` query parameter, or a numeric playlist ID (including Persian digits).
 
 ## Languages
 English and Persian (RTL). The extension starts in Persian. The globe button next to the theme button switches language, and the choice is remembered from then on.
@@ -37,7 +39,16 @@ Replace the PNGs in `icons/` with your own, keeping the names: `icon-16.png`, `i
 UI icons are from Lucide (https://lucide.dev, ISC license), inlined in `app.html`.
 
 ## What it does and doesn't do
-- Permissions: `downloads`, and access to `www.aparat.com` only. Nothing is sent anywhere else.
+- Permissions: `downloads`, and API access to `www.aparat.com`. Video files and thumbnails are fetched from Aparat's CDN hosts. No analytics or telemetry is included.
 - Skips videos whose uploader disabled downloads.
 - Download links are signed and expire within hours, so each one is requested just before its download.
 - Two videos download at a time. Aparat rate-limits its API, so don't raise this much.
+- If Aparat returns fewer videos than the playlist's reported count, the app shows a warning; only returned videos are available.
+- API requests time out after 30 seconds. Video failures are retried up to three times; Stop also interrupts the retry delay.
+
+## Development checks
+
+No build step or runtime dependencies are required. With Node.js 20 or newer, run `npm test`.
+The tests cover URL and response parsing, file names, quality selection, request cancellation and timeouts,
+download event races, queue concurrency, selection state and language switching.
+Browser download APIs are simulated in tests; validate real downloads by loading the extension in Firefox as described above.

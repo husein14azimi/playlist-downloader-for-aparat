@@ -6,9 +6,10 @@
   try {
     const theme = localStorage.getItem('theme');
     if (theme === 'light' || theme === 'dark') d.dataset.theme = theme;
-    const lang = localStorage.getItem('uiLang') || 'fa';
+    const saved = localStorage.getItem('uiLang');
+    const lang = ['fa', 'en'].includes(saved) ? saved : 'fa';
     d.lang = lang;
-    d.dir = localStorage.getItem('uiDir') || (lang === 'fa' ? 'rtl' : 'ltr');
+    d.dir = lang === 'fa' ? 'rtl' : 'ltr';
   } catch {}
   setTimeout(() => { d.dataset.ready = '1'; }, 1500);
 })();

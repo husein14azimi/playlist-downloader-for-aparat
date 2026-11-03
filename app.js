@@ -1,24 +1,17 @@
 import { parsePlaylistId, parsePlaylist, pickLink, cleanName, decodeEntities, fmtDuration, totalParts, numLabel } from './lib.js';
 import { current, detectLang, setLang, nextLang, t, tp, num, digits, ltr } from './i18n.js';
+import { getJSON, delay, ORIGIN } from './api.js';
+import { downloadFile } from './downloads.js';
 
 const $ = (s) => document.querySelector(s);
-const ORIGIN = 'https://www.aparat.com';
 const EXAMPLE = `${ORIGIN}/playlist/1301084/`;
 const CONCURRENCY = 2; // simultaneous downloads
 const ATTEMPTS = 3;    // tries per video
 
-let playlist = null, rows = [], running = false, cancelled = false, msgFn = null;
-const active = new Map(); // chrome download id -> { row, resolve, reject }
+let playlist = null, rows = [], running = false, loading = false, runController = null, msgFn = null;
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Messages and statuses are stored as functions so they can be re-worded when the language changes.
 const say = (fn) => { msgFn = fn; $('#msg').textContent = fn ? fn() : ''; };
-
-async function getJSON(path) {
-  const r = await fetch(ORIGIN + path, { credentials: 'include' });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
-}
 
 // ---------- theme and language buttons ----------
 const darkQuery = matchMedia('(prefers-color-scheme: dark)');
@@ -40,7 +33,12 @@ $('#theme').onclick = () => {
   try { localStorage.setItem('theme', next); } catch {}
   syncButtons();
 };
-$('#lang').onclick = async () => { await setLang(nextLang(), true); refreshText(); };
+$('#lang').onclick = async () => {
+  $('#lang').disabled = true;
+  try { await setLang(nextLang(), true); refreshText(); }
+  catch (error) { say(() => t('msg.languageFailed', { error: ltr(error.message) })); }
+  finally { $('#lang').disabled = false; }
+};
 darkQuery.addEventListener('change', syncButtons);
 
 // Re-word everything on screen after a language change.
@@ -52,17 +50,21 @@ function refreshText() {
 
 // ---------- playlist ----------
 async function load(input) {
+  if (running || loading) return;
   const id = parsePlaylistId(input);
   if (!id) return say(() => t('msg.pasteLink', { example: ltr(EXAMPLE) }));
+  loading = true; toggleUI();
   say(() => t('msg.loading'));
   try {
     playlist = parsePlaylist(await getJSON(`/api/fa/v1/video/playlist/one/playlist_id/${id}`));
+    render();
+    const got = playlist.items.length, total = playlist.total;
+    say(!got ? () => t('msg.empty') : got < total ? () => t('msg.partial', { got: num(got), total: num(total) }) : null);
   } catch (e) {
-    return say(() => t('msg.loadFailed', { error: ltr(e.message) }));
+    say(() => t('msg.loadFailed', { error: ltr(e.message) }));
+  } finally {
+    loading = false; toggleUI();
   }
-  render();
-  const got = playlist.items.length, total = playlist.total;
-  say(got < total ? () => t('msg.partial', { got: num(got), total: num(total) }) : null);
 }
 
 function renderMeta() {
@@ -97,7 +99,6 @@ function render() {
     paintRow(row);
     return row;
   });
-  $('#all').checked = true;
   $('#panel').hidden = false;
   updateSummary();
 }
@@ -115,107 +116,110 @@ function setCount(id, value, cls = '') {
   el.className = `count ${value !== num(0) ? cls : ''}`; // color the figure only when it is non-zero
 }
 function updateSummary() {
-  const c = (k) => rows.filter((r) => r.st.classList.contains(k)).length;
-  setCount('#cSelected', `${num(rows.filter((r) => r.cb.checked).length)}/${num(rows.length)}`);
+  const c = (k) => rows.filter((r) => r.cls === k).length;
+  const selected = rows.filter((r) => r.cb.checked).length;
+  $('#all').checked = rows.length > 0 && selected === rows.length;
+  $('#all').indeterminate = selected > 0 && selected < rows.length;
+  setCount('#cSelected', `${num(selected)}/${num(rows.length)}`);
   setCount('#cDone', num(c('ok')), 'ok');
   setCount('#cSkipped', num(c('skip')), 'skip');
   setCount('#cFailed', num(c('err')), 'err');
+  toggleUI();
 }
 
 // ---------- downloading ----------
-function settle(id, state, error) {
-  const tk = active.get(id);
-  if (!tk) return;
-  if (state === 'complete') { active.delete(id); tk.resolve(); }
-  else if (state === 'interrupted') { active.delete(id); tk.reject(new Error(error || 'interrupted')); }
-}
-chrome.downloads.onChanged.addListener((d) => settle(d.id, d.state?.current, d.error?.current));
-
-const searchDownloads = (query) => new Promise((res) => chrome.downloads.search(query, res));
-// chrome.downloads doesn't report byte progress via events, so poll.
-setInterval(async () => {
-  for (const [id, tk] of active) {
-    const [d] = await searchDownloads({ id });
-    if (!active.has(id) || !(d?.totalBytes > 0)) continue; // finished while we were asking
-    tk.row.bar.hidden = false;
-    tk.row.bar.value = d.bytesReceived / d.totalBytes;
-    const got = d.bytesReceived / 1048576, total = d.totalBytes / 1048576;
-    setStatus(tk.row, '', () => t('status.progress', { got: num(got, 1), total: num(total, 1) }));
-  }
-}, 1000);
-
-function startDownload(row, url, filename) {
-  return new Promise((resolve, reject) => {
-    chrome.downloads.download({ url, filename, conflictAction: 'uniquify' }, (id) => {
-      if (chrome.runtime.lastError || id === undefined) {
-        return reject(new Error(chrome.runtime.lastError?.message || t('error.couldNotStart')));
-      }
-      active.set(id, { row, resolve, reject });
-      // Tiny files can finish before the listener sees them.
-      chrome.downloads.search({ id }, ([d]) => d && settle(id, d.state, d.error));
-    });
-  });
-}
-
-async function processRow(row, maxH, dir) {
+async function processRow(row, maxH, dir, signal, total) {
   // File names always use ASCII digits so they sort correctly in any file manager.
-  const name = `${dir}/${numLabel(row.i, playlist.items.length)} - ${cleanName(row.it.title)}.mp4`;
-  for (let attempt = 1; attempt <= ATTEMPTS && !cancelled; attempt++) {
-    try {
-      setStatus(row, '', () => t('status.getting'));
-      // Links are signed and expire within hours, so fetch each one right before its download.
-      const v = (await getJSON(`/etc/api/video/videohash/${row.it.uid}`)).video;
-      if (!v) throw new Error(t('error.videoNotFound'));
-      if (v.can_download === false) return setStatus(row, 'skip', () => t('status.skipped'));
-      const link = pickLink(v.file_link_all, maxH);
-      if (!link) return setStatus(row, 'err', () => t('status.noLink'));
-      setStatus(row, '', () => t('status.downloading', { quality: ltr(link.profile) }));
-      await startDownload(row, link.url, name);
-      row.bar.hidden = true;
-      return setStatus(row, 'ok', () => t('status.done', { quality: ltr(link.profile) }));
-    } catch (e) {
-      if (cancelled) return setStatus(row, 'skip', () => t('status.stopped'));
-      if (attempt === ATTEMPTS) return setStatus(row, 'err', () => t('status.failed', { error: ltr(e.message) }));
-      setStatus(row, '', () => t('status.retrying', { attempt: num(attempt), max: num(ATTEMPTS - 1) }));
-      await sleep(2000 * attempt);
+  const name = `${dir}/${numLabel(row.i, total)} - ${cleanName(row.it.title)}.mp4`;
+  try {
+    for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+      try {
+        signal.throwIfAborted();
+        setStatus(row, '', () => t('status.getting'));
+        // Links are signed and expire within hours, so fetch each one right before its download.
+        const v = (await getJSON(`/etc/api/video/videohash/${encodeURIComponent(row.it.uid)}`, { signal }))?.video;
+        signal.throwIfAborted();
+        if (!v) throw new Error(t('error.videoNotFound'));
+        if ([false, 0, 'false', '0'].includes(v.can_download)) {
+          row.blocked = true;
+          return setStatus(row, 'skip', () => t('status.skipped'));
+        }
+        const link = pickLink(v.file_link_all, maxH);
+        if (!link) return setStatus(row, 'err', () => t('status.noLink'));
+        setStatus(row, '', () => t('status.downloading', { quality: ltr(link.profile) }));
+        await downloadFile(browser.downloads, { url: link.url, filename: name }, {
+          signal,
+          onProgress: (item) => {
+            row.bar.hidden = false;
+            row.bar.value = Math.max(0, Math.min(1, item.bytesReceived / item.totalBytes));
+            const got = item.bytesReceived / 1048576, total = item.totalBytes / 1048576;
+            setStatus(row, '', () => t('status.progress', { got: num(got, 1), total: num(total, 1) }));
+          },
+          onCancelError: (error) => say(() => t('msg.stopFailed', { error: ltr(error.message) })),
+        });
+        return setStatus(row, 'ok', () => t('status.done', { quality: ltr(link.profile) }));
+      } catch (e) {
+        if (signal.aborted || e.message === 'USER_CANCELED') return setStatus(row, 'skip', () => t('status.stopped'));
+        if (attempt === ATTEMPTS) return setStatus(row, 'err', () => t('status.failed', { error: ltr(e.message) }));
+        setStatus(row, '', () => t('status.retrying', { attempt: num(attempt), max: num(ATTEMPTS - 1) }));
+        await delay(2000 * attempt, signal);
+      }
     }
-  }
+  } catch (error) {
+    setStatus(row, signal.aborted ? 'skip' : 'err', () => signal.aborted
+      ? t('status.stopped') : t('status.failed', { error: ltr(error.message) }));
+  } finally { row.bar.hidden = true; }
 }
 
 function toggleUI() {
-  $('#go').disabled = running;
-  $('#load').disabled = running;
+  $('#go').disabled = running || loading || !rows.some((r) => r.cb.checked && r.cls !== 'ok' && !r.blocked);
+  $('#load').disabled = running || loading;
+  $('#url').disabled = running || loading;
+  $('#q').disabled = running || loading;
+  $('#all').disabled = running || loading || !rows.length;
+  rows.forEach((r) => { r.cb.disabled = running || loading; });
   $('#stop').hidden = !running;
+  $('#stop').disabled = !!runController?.signal.aborted;
   window.onbeforeunload = running ? (e) => { e.preventDefault(); e.returnValue = ''; } : null;
 }
 
 async function run() {
+  if (running || loading) return;
   // Videos already marked done are skipped, so clicking again retries only the rest.
-  const todo = rows.filter((r) => r.cb.checked && !r.st.classList.contains('ok'));
+  const todo = rows.filter((r) => r.cb.checked && r.cls !== 'ok' && !r.blocked);
   if (!todo.length) return;
-  running = true; cancelled = false; toggleUI();
+  running = true; runController = new AbortController(); toggleUI();
+  const { signal } = runController;
+  const total = rows.length;
   const maxH = +$('#q').value;
   const dir = `Aparat/${cleanName(playlist.title)}`;
   let next = 0;
   const worker = async () => {
-    while (!cancelled && next < todo.length) {
-      await processRow(todo[next++], maxH, dir);
+    while (!signal.aborted && next < todo.length) {
+      await processRow(todo[next++], maxH, dir, signal, total);
       updateSummary();
     }
   };
-  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
-  running = false; toggleUI(); updateSummary();
+  try {
+    const results = await Promise.allSettled(Array.from({ length: CONCURRENCY }, worker));
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure) say(() => t('msg.runFailed', { error: ltr(failure.reason.message) }));
+  } finally {
+    running = false; runController = null; toggleUI(); updateSummary();
+  }
 }
 
 // ---------- wiring ----------
 $('#plThumb').onerror = (e) => { e.target.hidden = true; };
-$('#loader').onsubmit = (e) => { e.preventDefault(); load($('#url').value); };
+$('#loader').onsubmit = (e) => { e.preventDefault(); return load($('#url').value); };
 $('#go').onclick = run;
-$('#stop').onclick = () => { cancelled = true; for (const id of active.keys()) chrome.downloads.cancel(id); };
+$('#stop').onclick = () => { runController?.abort(); toggleUI(); };
 $('#all').onchange = (e) => { rows.forEach((r) => { r.cb.checked = e.target.checked; }); updateSummary(); };
 
 await setLang(detectLang());
+$('#lang').disabled = false;
 refreshText();
+toggleUI();
 document.documentElement.dataset.ready = '1';
 
 const fromTab = new URLSearchParams(location.search).get('u');

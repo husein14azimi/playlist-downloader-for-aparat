@@ -7,8 +7,23 @@ export const LANGS = [
 const DEFAULT = LANGS[0];          // source language and fallback for missing keys
 export const START_LANG = 'fa';    // language used until the user picks one (Aparat is a Persian-language site)
 let cur = DEFAULT, dict = {}, base = null;
+let languageRequest = 0;
+const dictionaries = new Map();
 
-const load = async (code) => (await fetch(new URL(`./locales/${code}.json`, import.meta.url))).json();
+const load = (code) => {
+  if (!dictionaries.has(code)) {
+    const pending = (async () => {
+      const response = await fetch(new URL(`./locales/${code}.json`, import.meta.url));
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const result = await response.json();
+      if (!result || typeof result !== 'object' || Array.isArray(result) ||
+          Object.values(result).some((value) => typeof value !== 'string')) throw new Error('Invalid translations');
+      return result;
+    })().catch((error) => { dictionaries.delete(code); throw error; });
+    dictionaries.set(code, pending);
+  }
+  return dictionaries.get(code);
+};
 
 export const current = () => cur;
 
@@ -26,9 +41,12 @@ export function nextLang() {
 
 // remember=true stores the choice (only done when the user presses the language button).
 export async function setLang(code, remember = false) {
-  cur = LANGS.find((l) => l.code === code) || DEFAULT;
-  base ??= await load(DEFAULT.code);
-  dict = cur === DEFAULT ? base : await load(cur.code).catch(() => ({}));
+  const request = ++languageRequest;
+  const language = LANGS.find((l) => l.code === code) || DEFAULT;
+  const fallback = await load(DEFAULT.code);
+  const translation = language === DEFAULT ? fallback : await load(language.code);
+  if (request !== languageRequest) return;
+  cur = language; base = fallback; dict = translation;
   const root = document.documentElement;
   root.lang = cur.code;
   root.dir = cur.dir;
@@ -42,10 +60,11 @@ export function applyStatic() {
   document.title = t('app.title');
 }
 
-const has = (k) => k in dict || (base && k in base);
+const has = (k) => Object.hasOwn(dict, k) || (base && Object.hasOwn(base, k));
 
 export function t(key, params = {}) {
-  const s = dict[key] ?? base?.[key] ?? key;
+  const s = (Object.hasOwn(dict, key) ? dict[key] : null) ??
+    (base && Object.hasOwn(base, key) ? base[key] : null) ?? key;
   return s.replace(/\{(\w+)\}/g, (m, k) => (k in params ? params[k] : m));
 }
 
