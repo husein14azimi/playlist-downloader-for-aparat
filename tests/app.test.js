@@ -205,3 +205,51 @@ test('an empty playlist and a failed reload leave controls usable', async (t) =>
   assert.match(app.$('msg').textContent, /HTTP 404/);
   assert.equal(app.$('load').disabled, false);
 });
+
+test('pausing and resuming in Firefox preserves concurrency and does not retry a completed file', async (t) => {
+  const started = [], items = new Map();
+  const downloads = fakeDownloads({
+    download: async (options) => {
+      started.push(options.filename);
+      const id = started.length;
+      items.set(id, { state: 'in_progress', paused: false, totalBytes: 100, bytesReceived: 20 });
+      return id;
+    },
+    search: async ({ id }) => [items.get(id)],
+  });
+  const app = await setup(t, { downloads, fetchAPI: async (url) => Response.json(url.pathname.includes('/playlist/') ? playlist() : video) });
+  await app.load();
+  const running = app.$('go').onclick();
+  const complete = (id) => {
+    items.set(id, { state: 'complete', paused: false });
+    downloads.onChanged.emit({ id, state: { current: 'complete' }, paused: { current: false } });
+  };
+  try {
+    await until(() => started.length === 2);
+    items.set(1, { state: 'interrupted', paused: true, error: 'USER_CANCELED', totalBytes: -1 });
+    downloads.onChanged.emit({
+      id: 1, state: { current: 'interrupted' },
+      paused: { current: true }, error: { current: 'USER_CANCELED' },
+    });
+    // Drain the worker's promise continuations without waiting for the progress poll.
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(started.length, 2, 'A paused file must continue occupying its worker slot');
+    await until(() => app.statuses()[0].textContent === 'Paused');
+    assert.equal(app.$('load').disabled, true);
+    assert.equal(app.$('go').disabled, true);
+    assert.notEqual(app.statuses()[0].className, 'status skip');
+    items.set(1, { state: 'in_progress', paused: false, totalBytes: 100, bytesReceived: 30 });
+    downloads.onChanged.emit({ id: 1, state: { current: 'in_progress' }, paused: { current: false } });
+    complete(1);
+    await until(() => started.length === 3);
+    complete(2); complete(3);
+    await running;
+    await app.$('go').onclick();
+    assert.equal(started.length, 3, 'Resumed, completed files must not be downloaded again');
+    assert.ok(app.statuses().every((status) => status.className === 'status ok'));
+  } finally {
+    app.$('stop').onclick();
+    for (const id of items.keys()) complete(id);
+    await running;
+  }
+});

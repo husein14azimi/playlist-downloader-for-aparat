@@ -150,7 +150,11 @@ async function processRow(row, maxH, dir, signal, total) {
         await downloadFile(browser.downloads, { url: link.url, filename: name }, {
           signal,
           onProgress: (item) => {
-            row.bar.hidden = false;
+            row.bar.hidden = !(item.totalBytes > 0);
+            if (item.paused) return setStatus(row, '', () => t('status.paused'));
+            if (!(item.totalBytes > 0)) {
+              return setStatus(row, '', () => t('status.downloading', { quality: ltr(link.profile) }));
+            }
             row.bar.value = Math.max(0, Math.min(1, item.bytesReceived / item.totalBytes));
             const got = item.bytesReceived / 1048576, total = item.totalBytes / 1048576;
             setStatus(row, '', () => t('status.progress', { got: num(got, 1), total: num(total, 1) }));
