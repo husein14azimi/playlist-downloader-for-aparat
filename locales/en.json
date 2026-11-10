@@ -29,6 +29,7 @@
   "status.skipped": "Skipped: the uploader disabled downloads",
   "status.noLink": "No download link available (login may be required)",
   "status.downloading": "Downloading {quality}…",
+  "status.paused": "Paused",
   "status.progress": "{got} / {total} MB",
   "status.done": "Done ({quality})",
   "status.retrying": "Retrying ({attempt}/{max})…",

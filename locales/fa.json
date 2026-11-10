@@ -29,6 +29,7 @@
   "status.skipped": "رد شد: آپلودکننده دانلود را غیرفعال کرده است",
   "status.noLink": "لینک دانلود در دسترس نیست (ممکن است ورود به حساب لازم باشد)",
   "status.downloading": "در حال دانلود {quality}…",
+  "status.paused": "مکث دانلود",
   "status.progress": "{got} از {total} مگابایت",
   "status.done": "انجام شد ({quality})",
   "status.retrying": "تلاش مجدد ({attempt}/{max})…",
