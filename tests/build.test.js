@@ -48,13 +48,15 @@ test('builds installable browser-specific folders without shipping development f
     const manifest = manifests[browser] = await json(join(directory, 'manifest.json'));
     assert.equal(manifest.version, source.version);
     assert.equal(manifest.manifest_version, 3);
+    assert.equal(manifest.action.default_popup, 'app.html');
+    assert.equal(manifest.background.type, 'module');
     assert.deepEqual(manifest.permissions, source.permissions);
     assert.deepEqual(manifest.host_permissions, source.host_permissions);
     assert.deepEqual(manifest.icons, source.icons);
     const paths = [
       ...Object.values(manifest.icons), ...Object.values(manifest.action.default_icon),
       ...(manifest.background.scripts ?? [manifest.background.service_worker]),
-      'app.html', 'app.js', 'api.js', 'downloads.js', 'lib.js', 'i18n.js', 'boot.js', 'app.css',
+      'app.html', 'app.js', 'api.js', 'downloads.js', 'manager.js', 'lib.js', 'i18n.js', 'boot.js', 'app.css',
       'fonts/Vazirmatn-VariableFont_wght.ttf', 'fonts/OFL.txt',
       'LICENSE', 'THIRD_PARTY_NOTICES.md',
       'locales/fa.json', 'locales/en.json', '_locales/en/messages.json', '_locales/fa/messages.json',
@@ -78,7 +80,7 @@ test('builds installable browser-specific folders without shipping development f
   }
   assert.deepEqual(manifests.firefox, source);
   assert.deepEqual(manifests.chrome, manifests.edge);
-  assert.deepEqual(manifests.chrome.background, { service_worker: 'background.js' });
+  assert.deepEqual(manifests.chrome.background, { service_worker: 'background.js', type: 'module' });
   assert.equal(manifests.chrome.minimum_chrome_version, '123');
   assert.equal('browser_specific_settings' in manifests.chrome, false);
   const index = await readFile(join(root, 'index.html'), 'utf8');

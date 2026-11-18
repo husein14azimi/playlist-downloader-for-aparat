@@ -54,8 +54,9 @@ For browser checks:
 - Edge 123+: open `edge://extensions`, enable **Developer mode**, choose
   **Load unpacked**, and select `dist/edge`.
 
-Reload the extension after changing source or rebuilding. Keep the downloader
-tab open during downloads. Automated tests simulate extension APIs, so check
+Reload the extension after changing source or rebuilding. Open the toolbar popup
+to use the downloader; check that queued downloads continue when it closes and
+that selections and per-video qualities restore when it reopens. Automated tests simulate extension APIs, so check
 affected behavior in a real browser where possible. State which browsers you
 tested and any limitations in your pull request.
 

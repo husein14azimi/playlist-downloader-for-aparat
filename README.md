@@ -42,9 +42,16 @@ Keep that folder in place while the extension is installed. After updating the f
 The source folder's root manifest is for Firefox; Chrome and Edge must use their generated folders.
 
 ## Use
-Click the toolbar icon (on an Aparat playlist page the link is filled in for you), or paste a link such as
-`https://www.aparat.com/playlist/1301084/`, then **Load playlist** and **Download selected**.
-Keep the tab open while it runs. **Stop** cancels pending link requests, retry waits and active downloads.
+Click the toolbar icon to open the downloader directly in its popup. On an Aparat playlist page,
+the playlist loads automatically. Otherwise paste a link such as `https://www.aparat.com/playlist/1301084/`
+and choose **Load playlist**.
+Select videos with the checkboxes, choose each video's quality independently, and use
+**Download selected** for the selection or the **Download** button in a row for that video alone.
+Each row shows the size Aparat reports for its selected quality; if no size is provided, it displays **Unavailable**.
+Sizes update when the quality changes. While downloading, the browser's reported byte total is used when available.
+Downloads and queued videos continue in the background when the popup closes. Reopen the toolbar popup
+to restore the playlist, selection, qualities, and progress. **Stop** cancels pending link requests,
+scheduled retries and active downloads.
 Clicking **Download selected** again retries unfinished videos; completed files and videos with downloads disabled are skipped.
 The link field accepts Aparat playlist URLs, video URLs with a `playlist` query parameter, or a numeric playlist ID (including Persian digits).
 
@@ -66,12 +73,12 @@ Replace the PNGs in `icons/` with your own, keeping the names: `icon-16.png`, `i
 UI icons are from Lucide (https://lucide.dev, ISC license), inlined in `app.html`.
 
 ## What it does and doesn't do
-- Permissions: `downloads`, and API access to `www.aparat.com`. Video files and thumbnails are fetched from Aparat's CDN hosts. No analytics or telemetry is included.
+- Permissions: `downloads` for video transfers, `storage` for playlist/queue state, `alarms` for recovering background work and retries, and `activeTab` for reading the playlist URL when you open the popup. API access is limited to `www.aparat.com`. Video files and thumbnails are fetched from Aparat's CDN hosts. No analytics or telemetry is included.
 - Skips videos whose uploader disabled downloads.
 - Download links are signed and expire within hours, so each one is requested just before its download.
 - Two videos download at a time. Aparat rate-limits its API, so don't raise this much.
 - If Aparat returns fewer videos than the playlist's reported count, the app shows a warning; only returned videos are available.
-- API requests time out after 30 seconds. Video failures are retried up to three times; Stop also interrupts the retry delay.
+- Background API requests time out after 20 seconds. Video failures are attempted up to three times, with retries scheduled after 30 seconds through browser alarms. The browser may delay alarms while sleeping or suspended. Stop clears pending retries.
 
 ## Development checks
 

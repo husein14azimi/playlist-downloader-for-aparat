@@ -9,7 +9,7 @@ const targets = ['firefox', 'chrome', 'edge'];
 export const archiveName = (browser, version) => `playlist-downloader-aparat-${browser}-${version}.zip`;
 const files = [
   'app.html', 'app.css', 'app.js', 'api.js', 'background.js', 'boot.js',
-  'downloads.js', 'i18n.js', 'lib.js', '_locales', 'locales', 'icons', 'fonts',
+  'downloads.js', 'manager.js', 'i18n.js', 'lib.js', '_locales', 'locales', 'icons', 'fonts',
   'LICENSE', 'THIRD_PARTY_NOTICES.md',
 ];
 
@@ -54,7 +54,7 @@ export async function buildExtensions({ target = 'all', outputRoot = resolve(pro
 ${available.map((browser) => `<article><h2>${{ firefox: 'Firefox', chrome: 'Google Chrome', edge: 'Microsoft Edge' }[browser]}</h2>
 <p><a href="${escape(archiveName(browser, base.version))}" download>Download ZIP</a><a href="${browser}/">Browse unpacked files</a></p>
 <p>${browser === 'firefox' ? 'Open <code>about:debugging#/runtime/this-firefox</code>, choose Load Temporary Add-on, then select the ZIP or manifest.json.' : `Open <code>${browser}://extensions</code>, enable Developer mode, choose Load unpacked, then select the extracted ${browser} folder.`}</p></article>`).join('\n')}
-<p>Keep the unpacked folder in place after installation. Keep the downloader tab open while videos download.</p>
+<p>Keep the unpacked folder in place after installation. Open the toolbar icon to select videos and qualities; downloads continue when the popup closes.</p>
 </html>\n`);
   return outputs;
 }
