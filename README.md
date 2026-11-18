@@ -1,4 +1,6 @@
-# Playlist Downloader for Aparat (Firefox build)
+# Playlist Downloader for Aparat
+
+Available for Firefox 140+, Google Chrome 123+ and Microsoft Edge 123+.
 
 Downloads every video of an Aparat playlist, in playlist order, into
 `Downloads/Aparat/<playlist title>/NN - <video title>.mp4` (NN is zero-padded: 2 digits, 3 from 100 videos, 4 from 1000).
@@ -9,10 +11,35 @@ Downloads every video of an Aparat playlist, in playlist order, into
 <br><br><br><br>
 ![Screenshot #2](https://raw.githubusercontent.com/husein14azimi/playlist-downloader-for-aparat/main/docs/screenshots/2.jpg)
 
-## Install (Firefox 140 or newer)
+## Install in Firefox
 Quick test (removed when Firefox restarts):
 1. Open `about:debugging#/runtime/this-firefox`.
-2. Click **Load Temporary Add-on** and pick the extension zip file (dowloaded from the releases or zipped the downloaded source code)
+2. Click **Load Temporary Add-on** and pick `manifest.json` from the source folder or the generated `dist/firefox` folder. A Firefox release ZIP also works.
+
+## Install in Chrome or Edge
+
+Generate the browser folders with Node.js 20 or newer:
+
+```sh
+npm run build
+```
+
+This single command creates unpacked folders and versioned ZIP files for **all three browsers**, plus `dist/index.html`, a local build viewer with download links and installation instructions.
+The terminal also lists every output path. No dependency installation, Python, or external archiver is required.
+
+To build everything and immediately open the viewer in your default browser:
+
+```sh
+npm run build:open
+```
+
+1. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge.
+2. Enable **Developer mode**.
+3. Click **Load unpacked** and select `dist/chrome` or `dist/edge`, respectively.
+
+If using a release ZIP, extract it first and select the extracted folder containing `manifest.json`.
+Keep that folder in place while the extension is installed. After updating the files, click **Reload** on the extensions page.
+The source folder's root manifest is for Firefox; Chrome and Edge must use their generated folders.
 
 ## Use
 Click the toolbar icon (on an Aparat playlist page the link is filled in for you), or paste a link such as
@@ -48,7 +75,15 @@ UI icons are from Lucide (https://lucide.dev, ISC license), inlined in `app.html
 
 ## Development checks
 
-No build step or runtime dependencies are required. With Node.js 20 or newer, run `npm test`.
+No runtime dependencies or bundler are required. With Node.js 20 or newer, run `npm test`.
 The tests cover URL and response parsing, file names, quality selection, request cancellation and timeouts,
-download event races, queue concurrency, selection state and language switching.
-Browser download APIs are simulated in tests; validate real downloads by loading the extension in Firefox as described above.
+download event races, queue concurrency and selection state under both `browser` and `chrome` namespaces,
+language switching, toolbar actions, and generated browser packages.
+Browser download APIs are simulated in these tests; validate real downloads by loading the appropriate browser build as described above.
+
+`npm run build` creates `dist/firefox`, `dist/chrome` and `dist/edge` with only runtime files, assets and a browser-specific manifest, alongside `playlist-downloader-aparat-<browser>-<version>.zip` files and `dist/index.html`.
+Use `npm run build:firefox`, `npm run build:chrome` or `npm run build:edge` to generate one target.
+Firefox keeps its background scripts and Gecko settings; Chrome and Edge use a Manifest V3 service worker.
+The minimum Chromium version reflects the UI's use of the `light-dark()` CSS function.
+ZIPs are generated automatically with `manifest.json` at the archive root. Repeated builds of unchanged source generate identical ZIPs.
+Publishing through browser stores is a separate step.

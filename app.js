@@ -4,6 +4,7 @@ import { getJSON, delay, ORIGIN } from './api.js';
 import { downloadFile } from './downloads.js';
 
 const $ = (s) => document.querySelector(s);
+const extensionAPI = globalThis.browser ?? globalThis.chrome;
 const EXAMPLE = `${ORIGIN}/playlist/1301084/`;
 const CONCURRENCY = 2; // simultaneous downloads
 const ATTEMPTS = 3;    // tries per video
@@ -147,7 +148,7 @@ async function processRow(row, maxH, dir, signal, total) {
         const link = pickLink(v.file_link_all, maxH);
         if (!link) return setStatus(row, 'err', () => t('status.noLink'));
         setStatus(row, '', () => t('status.downloading', { quality: ltr(link.profile) }));
-        await downloadFile(browser.downloads, { url: link.url, filename: name }, {
+        await downloadFile(extensionAPI.downloads, { url: link.url, filename: name }, {
           signal,
           onProgress: (item) => {
             row.bar.hidden = !(item.totalBytes > 0);
