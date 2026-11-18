@@ -10,6 +10,7 @@ export const archiveName = (browser, version) => `playlist-downloader-aparat-${b
 const files = [
   'app.html', 'app.css', 'app.js', 'api.js', 'background.js', 'boot.js',
   'downloads.js', 'i18n.js', 'lib.js', '_locales', 'locales', 'icons', 'fonts',
+  'LICENSE', 'THIRD_PARTY_NOTICES.md',
 ];
 
 export async function buildExtensions({ target = 'all', outputRoot = resolve(projectRoot, 'dist') } = {}) {

@@ -56,6 +56,7 @@ test('builds installable browser-specific folders without shipping development f
       ...(manifest.background.scripts ?? [manifest.background.service_worker]),
       'app.html', 'app.js', 'api.js', 'downloads.js', 'lib.js', 'i18n.js', 'boot.js', 'app.css',
       'fonts/Vazirmatn-VariableFont_wght.ttf', 'fonts/OFL.txt',
+      'LICENSE', 'THIRD_PARTY_NOTICES.md',
       'locales/fa.json', 'locales/en.json', '_locales/en/messages.json', '_locales/fa/messages.json',
     ];
     for (const path of paths) assert.ok((await stat(join(directory, path))).isFile(), `${browser}/${path}`);
@@ -67,6 +68,9 @@ test('builds installable browser-specific folders without shipping development f
       assert.ok(!name.includes('\\') && !name.startsWith('/'));
     }
     assert.deepEqual(JSON.parse(archived.get('manifest.json').toString()), manifest);
+    for (const name of ['LICENSE', 'THIRD_PARTY_NOTICES.md', 'fonts/OFL.txt']) {
+      assert.deepEqual(archived.get(name), await readFile(new URL(`../${name}`, import.meta.url)));
+    }
     const listing = await readdir(directory);
     for (const excluded of ['tests', 'scripts', 'manifests', '.git', 'README.md', 'package.json', 'docs']) {
       assert.ok(!listing.includes(excluded), `${browser}: should not contain ${excluded}`);

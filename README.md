@@ -87,3 +87,19 @@ Firefox keeps its background scripts and Gecko settings; Chrome and Edge use a M
 The minimum Chromium version reflects the UI's use of the `light-dark()` CSS function.
 ZIPs are generated automatically with `manifest.json` at the archive root. Repeated builds of unchanged source generate identical ZIPs.
 Publishing through browser stores is a separate step.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, browser checks, translations,
+bug reports, and submitting pull requests to the original project.
+
+## License
+
+Original project code and documentation are licensed under the [MIT License](LICENSE).
+
+- Copyright (c) 2026 Hosein Azimi
+- Copyright (c) 2026 Seyed Mohammad Saleh Ghotbani
+
+Bundled third-party assets retain their own licenses. See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [fonts/OFL.txt](fonts/OFL.txt).
+Each generated browser package includes these license notices.
