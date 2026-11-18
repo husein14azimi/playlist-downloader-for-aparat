@@ -1,4 +1,4 @@
-// Firefox's Promise API lets failures propagate without unchecked runtime.lastError callbacks.
+// Modern Firefox, Chrome and Edge support Promise-based extension download APIs.
 export async function downloadFile(downloads, options, { signal, onProgress, onCancelError, pollInterval = 1000 } = {}) {
   signal?.throwIfAborted();
   const id = await downloads.download({ ...options, conflictAction: 'uniquify' });

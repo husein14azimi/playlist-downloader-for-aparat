@@ -54,16 +54,6 @@
 
     <div class="bar">
       <label class="chip"><input id="all" type="checkbox" checked><span data-i18n="list.selectAll">Select all</span></label>
-      <label class="chip"><span data-i18n="list.quality">Highest quality</span>
-        <select id="q">
-          <option value="1080">1080p</option>
-          <option value="720">720p</option>
-          <option value="480">480p</option>
-          <option value="360">360p</option>
-          <option value="240">240p</option>
-          <option value="144">144p</option>
-        </select>
-      </label>
       <span class="spacer"></span>
       <button id="stop" class="quiet" type="button" hidden><svg class="ic"><use href="#i-stop"/></svg><span data-i18n="action.stop">Stop</span></button>
       <button id="go" type="button"><svg class="ic"><use href="#i-download"/></svg><span data-i18n="action.download">Download selected</span></button>
@@ -75,6 +65,7 @@
       <span id="cFailed" class="count"><b></b><span data-i18n="summary.failed">failed</span></span>
     </div>
     <ol id="list"></ol>
+    <p class="popup-hint" data-i18n="popup.background">Downloads continue when this popup closes.</p>
   </section>
 </main>
 <script type="module" src="app.js"></script>
