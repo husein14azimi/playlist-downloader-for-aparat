@@ -36,6 +36,59 @@ test('single downloads ignore checkbox selection and honor each selected quality
   assert.equal(h.manager.state.rows[1].status, 'idle');
 });
 
+test('playlist quality uses each video\'s available fallback and also updates unchecked rows', async () => {
+  const h = await loaded({ request: async (path) => path.includes('/playlist/') ? playlistJSON()
+    : { video: { can_download: true, file_link_all: (path.endsWith('/a') ? [1080, 720, 360]
+      : path.endsWith('/b') ? [360] : [1080]).map((height) => ({
+        profile: `${height}p`, size: `${height} MB`, urls: [`https://cdn.test/${height}.mp4`],
+      })) } } });
+  await h.manager.handle('select', { i: 1, selected: false });
+  await h.manager.handle('qualityAll', { quality: 720 });
+  assert.deepEqual(h.manager.state.rows.map((row) => row.quality), [720, 360, 1080]);
+  assert.equal(h.manager.state.rows[1].selected, false);
+  assert.equal(h.storage.downloadQueue.playlistQuality, 720);
+  await h.manager.handle('qualityAll', { quality: Number.MAX_SAFE_INTEGER });
+  assert.deepEqual(h.manager.state.rows.map((row) => row.quality), [1080, 360, 1080]);
+  await h.manager.handle('quality', { i: 0, quality: 360 });
+  assert.equal(h.manager.state.playlistQuality, null);
+  await h.manager.handle('enqueue');
+  await until(() => h.started.length === 2);
+  assert.deepEqual(h.started.map((item) => item.url), ['https://cdn.test/360.mp4', 'https://cdn.test/1080.mp4']);
+  await h.manager.handle('stop');
+});
+
+test('playlist quality chosen during metadata loading is applied when details arrive', async () => {
+  const pending = deferred();
+  const h = harness({ request: async (path) => path.includes('/playlist/') ? playlistJSON()
+    : path.endsWith('/a') ? pending.promise : videoJSON });
+  await h.manager.handle('load', { input: '123' });
+  await until(() => h.manager.state.rows[0].details === 'loading');
+  await h.manager.handle('qualityAll', { quality: 360 });
+  pending.resolve(videoJSON);
+  await until(() => h.manager.state.rows.every((row) => row.details === 'ready'));
+  assert.deepEqual(h.manager.state.rows.map((row) => row.quality), [360, 360, 360]);
+});
+
+test('shared quality preserves completed files unless their quality changes and rejects active queues', async () => {
+  const h = await loaded();
+  await h.manager.handle('enqueue', { i: 0 });
+  await until(() => h.manager.state.rows[0].downloadId != null);
+  const before = structuredClone(h.manager.state);
+  await assert.rejects(h.manager.handle('qualityAll', { quality: 360 }), /Stop the current queue/);
+  assert.deepEqual(h.manager.state, before);
+  await h.complete(1);
+  await h.manager.handle('qualityAll', { quality: 720 });
+  assert.equal(h.manager.state.rows[0].status, 'done');
+  await h.manager.handle('qualityAll', { quality: 360 });
+  assert.equal(h.manager.state.rows[0].status, 'idle');
+  assert.equal(h.manager.state.rows[0].totalBytes, 0);
+  assert.equal(h.manager.state.rows[0].bytesReceived, 0);
+  for (const quality of [0, -1, 720.5, Infinity, '720', null]) {
+    await assert.rejects(h.manager.handle('qualityAll', { quality }), /not available/);
+  }
+  assert.equal(h.manager.state.playlistQuality, 360);
+});
+
 test('bulk and repeated single requests share the same two-download limit', async () => {
   const h = await loaded();
   await h.manager.handle('enqueue');

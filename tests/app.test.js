@@ -70,6 +70,29 @@ for (const namespace of ['browser', 'chrome']) describe(`popup using ${namespace
     await app.h.complete(1);
   });
 
+  test('shared quality updates sizes, survives reopening, and permits individual overrides', async (t) => {
+    const app = await setup(t, namespace);
+    app.row(2).cb.checked = false; await app.row(2).cb.onchange();
+    app.$('quality-all').value = '360'; await app.$('quality-all').onchange();
+    for (let i = 0; i < 3; i++) {
+      assert.equal(app.row(i).quality.value, '360');
+      assert.ok(app.row(i).size.textContent.includes('1.48'));
+    }
+    assert.equal(app.row(2).cb.checked, false);
+    app.close();
+    const reopened = await setup(t, namespace, app.h);
+    assert.equal(reopened.$('quality-all').value, '360');
+    reopened.row(1).quality.value = '720'; await reopened.row(1).quality.onchange();
+    assert.equal(reopened.$('quality-all').value, '');
+    assert.equal(reopened.row(0).quality.value, '360');
+    assert.ok(reopened.row(1).size.textContent.includes('3.51'));
+    await reopened.$('go').onclick();
+    await until(() => app.h.started.length === 2);
+    assert.equal(reopened.$('quality-all').disabled, true);
+    assert.deepEqual(app.h.started.map((item) => item.url), ['https://cdn.test/360.mp4', 'https://cdn.test/720.mp4']);
+    await app.h.manager.handle('stop');
+  });
+
   test('closing and reopening the popup preserves selections, qualities, and active downloads', async (t) => {
     const app = await setup(t, namespace);
     app.row(0).quality.value = '360'; await app.row(0).quality.onchange();

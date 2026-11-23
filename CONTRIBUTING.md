@@ -120,6 +120,12 @@ Link any related issue and describe reproduction steps for bug fixes.
 Address review feedback with focused follow-up commits. Keep discussion
 respectful and give reviewers enough context to assess the change.
 
+After a change reaches `main` in the original repository, the browser release workflow
+runs tests, builds Firefox/Chrome/Edge packages, and publishes a commit-specific development
+prerelease with SHA-256 checksums. Forks and pull requests do not publish releases.
+No personal access token is needed; the publishing job uses the repository's `GITHUB_TOKEN`
+with `contents: write`. Browser-store submission and Firefox signing are separate steps.
+
 ## Licensing
 
 By submitting a contribution, you agree to make your contribution available

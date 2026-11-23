@@ -45,6 +45,10 @@ The source folder's root manifest is for Firefox; Chrome and Edge must use their
 Click the toolbar icon to open the downloader directly in its popup. On an Aparat playlist page,
 the playlist loads automatically. Otherwise paste a link such as `https://www.aparat.com/playlist/1301084/`
 and choose **Load playlist**.
+Use **Quality for all** to set a quality ceiling for the whole playlist, including unchecked rows.
+Each video uses its best available quality at or below that ceiling, or its lowest quality if none is below it.
+**Best available** chooses each video's highest quality. You can then override individual rows;
+the shared selector shows **Per-video** after an override. Shared quality changes are disabled while a queue is active.
 Select videos with the checkboxes, choose each video's quality independently, and use
 **Download selected** for the selection or the **Download** button in a row for that video alone.
 Each row shows the size Aparat reports for its selected quality; if no size is provided, it displays **Unavailable**.
@@ -94,6 +98,18 @@ Firefox keeps its background scripts and Gecko settings; Chrome and Edge use a M
 The minimum Chromium version reflects the UI's use of the `light-dark()` CSS function.
 ZIPs are generated automatically with `manifest.json` at the archive root. Repeated builds of unchanged source generate identical ZIPs.
 Publishing through browser stores is a separate step.
+
+## Automatic development releases
+
+On each push to `main` in **husein14azimi/playlist-downloader-for-aparat**, GitHub Actions
+runs the tests, builds all three browser ZIPs, and publishes them with `SHA256SUMS.txt`
+in a development prerelease tagged `build-<full commit SHA>`. Each push builds the resulting
+commit, including a merge commit; intermediate commits within the same push are not built separately.
+The workflow is skipped in forks and does not run for pull requests or other branches.
+Publishing requires a successful build and checksum verification. A rerun of the same commit
+uses the same release instead of creating another one. Development prereleases do not replace
+the latest stable release. The Firefox ZIP is unsigned and supports temporary installation;
+publishing signed packages to browser stores remains a separate process.
 
 ## Contributing
 

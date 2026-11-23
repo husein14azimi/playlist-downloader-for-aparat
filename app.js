@@ -45,6 +45,7 @@ function controls() {
   $('#stop').hidden = !active;
   $('#stop').disabled = !!pending;
   $('#all').disabled = !!pending || !state.rows.length;
+  $('#quality-all').disabled = !!pending || state.loading || active || !state.rows.length;
   views.forEach((view, i) => {
     const row = state.rows[i];
     view.cb.disabled = !!pending;
@@ -113,6 +114,8 @@ function statusText(row) {
 function render() {
   $('#panel').hidden = !state.playlist;
   if (!state.playlist) { controls(); return; }
+  $('#quality-all').value = String(state.playlistQuality ?? '');
+  $('#quality-all').title = t('quality.hint');
   const nextSignature = `${state.playlistId}:${state.rows.map((row) => row.uid).join(',')}`;
   if (signature !== nextSignature) { signature = nextSignature; createRows(); }
   $('#plTitle').textContent = decodeEntities(state.playlist.title);
@@ -175,6 +178,7 @@ $('#loader').onsubmit = (event) => {
 $('#go').onclick = () => command('enqueue');
 $('#stop').onclick = () => command('stop');
 $('#all').onchange = () => command('select', { selected: $('#all').checked });
+$('#quality-all').onchange = () => command('qualityAll', { quality: Number($('#quality-all').value) });
 $('#plThumb').onerror = () => { $('#plThumb').hidden = true; };
 
 async function poll() {

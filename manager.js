@@ -21,7 +21,7 @@ export function videoOptions(video) {
 export class DownloadManager {
   constructor(api, { request = getJSON, now = Date.now, metadataDelay = 200 } = {}) {
     this.api = api; this.request = request; this.now = now; this.metadataDelay = metadataDelay;
-    this.state = { schema: 1, playlistId: null, playlist: null, rows: [], loading: false, error: '' };
+    this.state = { schema: 1, playlistId: null, playlist: null, playlistQuality: 1080, rows: [], loading: false, error: '' };
     this.controllers = new Map(); this.writes = Promise.resolve(); this.requests = Promise.resolve();
     this.ready = this.initialize();
   }
@@ -71,6 +71,14 @@ export class DownloadManager {
     const option = row.qualities.find((value) => value.height <= row.quality) || row.qualities.at(-1);
     if (option) row.quality = option.height;
     row.details = 'ready'; row.detailsError = '';
+  }
+  setQuality(row, quality) {
+    const available = row.qualities.find((option) => option.height <= quality) || row.qualities.at(-1);
+    const height = available?.height ?? quality;
+    if (row.quality !== height) {
+      row.quality = height; row.totalBytes = 0; row.bytesReceived = 0;
+      if (row.status === 'done') row.status = 'idle';
+    }
   }
   kick() {
     this.pump();
@@ -210,7 +218,7 @@ export class DownloadManager {
       this.state.loading = true;
       try {
         const playlist = parsePlaylist(await this.request(`/api/fa/v1/video/playlist/one/playlist_id/${id}`, { timeout: 20000 }));
-        this.state = { schema: 1, playlistId: id, playlist, loading: false, error: '', rows: playlist.items.map((item, i) => ({
+        this.state = { schema: 1, playlistId: id, playlist, playlistQuality: 1080, loading: false, error: '', rows: playlist.items.map((item, i) => ({
           ...item, i, selected: true, quality: 1080, qualities: [], details: 'pending', detailsError: '',
           status: 'idle', attempts: 0, downloadId: null, error: '', totalBytes: 0, bytesReceived: 0,
         })) };
@@ -220,10 +228,13 @@ export class DownloadManager {
     } else if (action === 'quality') {
       const row = this.state.rows.find((item) => item.i === data.i);
       if (!row || busy(row) || !row.qualities.some((option) => option.height === data.quality)) throw new Error('Quality is not available');
-      if (row.quality !== data.quality) {
-        row.quality = data.quality; row.totalBytes = 0; row.bytesReceived = 0;
-        if (row.status === 'done') row.status = 'idle';
-      }
+      if (row.quality !== data.quality) this.state.playlistQuality = null;
+      this.setQuality(row, data.quality);
+    } else if (action === 'qualityAll') {
+      if (!Number.isSafeInteger(data.quality) || data.quality <= 0) throw new Error('Quality is not available');
+      if (isBusy(this.state)) throw new Error('Stop the current queue before changing all qualities');
+      this.state.playlistQuality = data.quality;
+      for (const row of this.state.rows) this.setQuality(row, data.quality);
     } else if (action === 'enqueue') {
       for (const row of this.state.rows) {
         if ((data.i == null ? row.selected : row.i === data.i) && !busy(row) && row.status !== 'done' && !row.blocked) {
