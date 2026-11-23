@@ -68,7 +68,12 @@ jobs:
           Load the Firefox ZIP through about:debugging as a temporary add-on. This package is unsigned.
           These packages are for manual installation; browser-store publishing is separate.
           EOF
-          if ! gh release view "$tag" > /dev/null 2>&1; then
+          if draft="$(gh release view "$tag" --json isDraft --jq '.isDraft' 2>/dev/null)"; then
+            if [[ "$draft" == "false" ]]; then
+              echo "Development release already published: $tag"
+              exit 0
+            fi
+          else
             gh release create "$tag" --target "$GITHUB_SHA" --draft --prerelease \
               --title "$title" --notes-file "$notes"
           fi

@@ -107,7 +107,7 @@ in a development prerelease tagged `build-<full commit SHA>`. Each push builds t
 commit, including a merge commit; intermediate commits within the same push are not built separately.
 The workflow is skipped in forks and does not run for pull requests or other branches.
 Publishing requires a successful build and checksum verification. A rerun of the same commit
-uses the same release instead of creating another one. Development prereleases do not replace
+completes an existing draft or leaves an already published release unchanged. Development prereleases do not replace
 the latest stable release. The Firefox ZIP is unsigned and supports temporary installation;
 publishing signed packages to browser stores remains a separate process.
 
