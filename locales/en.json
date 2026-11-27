@@ -48,6 +48,10 @@
   "status.done": "Done ({quality})",
   "status.retrying": "Retrying ({attempt}/{max})…",
   "status.stopped": "Stopped",
+  "status.cancelled": "Cancelled in browser",
+  "msg.browserCancelled": "A browser download was cancelled. Pending videos were stopped. If an external manager took over, check its downloads before retrying; disable its automatic browser capture to keep filenames and folders. See Downloads and external managers above.",
+  "download.helpTitle": "Downloads and external managers",
+  "download.help": "Downloads use your browser in Firefox, Chrome and Edge. If IDM or another manager takes over, this extension cannot track its progress or preserve its folders and filenames. Disable automatic capture for this browser in that manager, then retry. Browser cancellation does not confirm an external download succeeded.",
   "status.failed": "Failed: {error}",
   "error.videoNotFound": "video not found",
   "error.couldNotStart": "could not start"

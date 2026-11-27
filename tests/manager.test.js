@@ -181,8 +181,25 @@ test('disabled downloads are skipped and actual browser cancellation is not retr
   assert.equal(h.manager.state.rows[0].status, 'skipped');
   assert.equal(h.manager.state.rows[0].blocked, true);
   await h.manager.changed({ id: 1, state: { current: 'interrupted' }, paused: { current: false }, error: { current: 'USER_CANCELED' } });
-  assert.equal(h.manager.state.rows[1].status, 'stopped');
+  assert.equal(h.manager.state.rows[1].status, 'cancelled');
   await h.complete(2);
+});
+
+test('browser cancellation halts unstarted files without claiming an external download succeeded', async () => {
+  const h = await loaded({ request: async (path) => path.includes('/playlist/') ? playlistJSON(['a', 'b', 'c', 'd']) : videoJSON });
+  await h.manager.handle('enqueue');
+  await until(() => h.manager.state.rows.filter((row) => row.downloadId != null).length === 2);
+  h.records.set(1, { id: 1, state: 'interrupted', paused: false, error: 'USER_CANCELED' });
+  await h.manager.changed({ id: 1, state: { current: 'interrupted' }, error: { current: 'USER_CANCELED' } });
+  assert.deepEqual(h.manager.state.rows.map((row) => row.status), ['cancelled', 'downloading', 'stopped', 'stopped']);
+  await h.complete(2);
+  await h.manager.recover();
+  assert.equal(h.started.length, 2);
+  assert.equal(h.manager.state.rows[0].status, 'cancelled');
+  await h.manager.handle('enqueue', { i: 0 });
+  await until(() => h.manager.state.rows[0].downloadId != null);
+  await h.manager.handle('stop');
+  assert.equal(h.manager.state.rows[0].status, 'stopped');
 });
 
 test('empty or failed reloads and unsupported qualities leave the existing playlist usable', async () => {

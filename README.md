@@ -60,6 +60,9 @@ Clicking **Download selected** again retries unfinished videos; completed files 
 The link field accepts Aparat playlist URLs, video URLs with a `playlist` query parameter, or a numeric playlist ID (including Persian digits).
 
 ## Languages
+The popup uses a compact 14px base font with video thumbnails beside titles.
+Posters load lazily; missing or failed posters leave the title and download controls usable.
+
 English and Persian (RTL). The extension starts in Persian. The globe button next to the theme button switches language, and the choice is remembered from then on.
 - UI strings: `locales/en.json`, `locales/fa.json` (flat key -> text, `{placeholders}`, plurals as `key.one` / `key.other`).
 - Store listing name/description/tooltip: `_locales/<code>/messages.json`.
@@ -85,6 +88,33 @@ UI icons are from Lucide (https://lucide.dev, ISC license), inlined in `app.html
 - Background API requests time out after 20 seconds. Video failures are attempted up to three times, with retries scheduled after 30 seconds through browser alarms. The browser may delay alarms while sleeping or suspended. Stop clears pending retries.
 
 ## Development checks
+
+### Download managers and browser differences
+
+Firefox, Chrome and Edge all use the browser's `downloads.download()` API, passing
+the same numbered filename and playlist subfolder. Chrome and Edge do not intentionally
+hand downloads to IDM, and Firefox does not inherently prevent external interception.
+IDM supports integration with all three browsers. Once a separate manager takes over,
+this extension cannot track its progress or enforce its destination folder and filename.
+The browser API offers no portable option to force another manager to ignore a download.
+
+If downloads open in IDM or lose their playlist filenames, turn off automatic capture for
+the affected browser under **IDM Options > General**, then restart that browser. Alternatively,
+disable the IDM integration extension in that browser profile while using this downloader.
+These are user-controlled settings; this extension does not modify other extensions or IDM.
+
+A `USER_CANCELED` browser event can mean manual cancellation or an external handoff;
+it does not prove which occurred or that another program completed the file. The popup
+reports **Cancelled in browser** with troubleshooting guidance and stops queued/retry files
+to avoid opening the rest of a playlist in an external manager. Already active downloads
+continue. Check the browser and external manager before explicitly retrying unfinished videos.
+The extension's **Stop** action is still reported separately as **Stopped**.
+
+References: [Chrome download API](https://developer.chrome.com/docs/extensions/reference/api/downloads),
+[Firefox download API](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/downloads/download),
+and [IDM integration settings](https://www.internetdownloadmanager.com/support/using_idm/options.html).
+
+### Tests and builds
 
 No runtime dependencies or bundler are required. With Node.js 20 or newer, run `npm test`.
 The tests cover URL and response parsing, file names, quality selection, request cancellation and timeouts,

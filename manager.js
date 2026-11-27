@@ -119,7 +119,12 @@ export class DownloadManager {
   }
   fail(row, error) {
     row.downloadId = null; row.error = error;
-    if (row.stopRequested || error === 'USER_CANCELED') row.status = 'stopped';
+    if (row.stopRequested) row.status = 'stopped';
+    else if (error === 'USER_CANCELED') {
+      row.status = 'cancelled';
+      // A browser cancellation can also be an external manager taking over. Do not flood it with queued files.
+      for (const pending of this.state.rows) if (['queued', 'retry'].includes(pending.status)) pending.status = 'stopped';
+    }
     else if (row.attempts < 3) { row.status = 'retry'; row.retryAt = this.now() + 30000; }
     else row.status = 'error';
   }
