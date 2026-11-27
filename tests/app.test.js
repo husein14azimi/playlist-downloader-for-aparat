@@ -116,4 +116,40 @@ for (const namespace of ['browser', 'chrome']) describe(`popup using ${namespace
     const app = await setup(t, namespace, h);
     assert.equal(app.row(0).size.textContent, 'Size: Unavailable');
   });
+
+  test('thumbnails use lazy HTTP images and missing, unsafe or broken posters leave titles usable', async (t) => {
+    const h = harness({ request: async (path) => path.includes('/playlist/')
+      ? { data: { title: 'Test', video: { data: [
+        { uid: 'a', title: '<b>Title</b>', small_poster: 'https://cdn.test/poster.jpg' },
+        { uid: 'b', title: 'No poster' },
+        { uid: 'c', title: 'Unsafe poster', small_poster: 'javascript:alert(1)' },
+      ] } } } : { video: { file_link_all: [] } } });
+    const app = await setup(t, namespace, h);
+    const info = (i) => app.$('list').children[i].children[2];
+    const image = info(0).children[0];
+    assert.equal(image.src, 'https://cdn.test/poster.jpg');
+    assert.equal(image.loading, 'lazy');
+    assert.equal(image.referrerPolicy, 'no-referrer');
+    assert.equal(image.alt, '');
+    image.onerror();
+    assert.equal(image.hidden, true);
+    assert.equal(info(0).children[1].textContent, '<b>Title</b>');
+    assert.equal(info(1).children[0].hidden, true);
+    assert.equal(info(2).children[0].hidden, true);
+    assert.equal(info(2).children[0].src, undefined);
+  });
+
+  test('browser cancellation gives neutral external-manager guidance while Stop stays distinct', async (t) => {
+    const app = await setup(t, namespace);
+    await app.$('go').onclick();
+    await until(() => app.h.manager.state.rows.filter((row) => row.downloadId != null).length === 2);
+    app.h.records.set(1, { id: 1, state: 'interrupted', paused: false, error: 'USER_CANCELED' });
+    await app.h.manager.changed({ id: 1, state: { current: 'interrupted' }, error: { current: 'USER_CANCELED' } });
+    await app.row(0).cb.onchange();
+    assert.equal(app.row(0).status.textContent, 'Cancelled in browser');
+    assert.ok(app.$('msg').textContent.includes('If an external manager took over'));
+    assert.equal(app.h.started.length, 2);
+    await app.$('stop').onclick();
+    assert.equal(app.row(1).status.textContent, 'Stopped');
+  });
 });

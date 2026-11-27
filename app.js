@@ -76,6 +76,17 @@ function createRows() {
     pick.append(cb);
     const number = Object.assign(document.createElement('span'), { className: 'n' });
     const title = Object.assign(document.createElement('span'), { className: 'title', textContent: decodeEntities(row.title) });
+    const info = Object.assign(document.createElement('span'), { className: 'video-info' });
+    const thumbnail = Object.assign(document.createElement('img'), {
+      className: 'video-thumbnail', alt: '', loading: 'lazy', decoding: 'async', referrerPolicy: 'no-referrer',
+      width: 64, height: 36,
+    });
+    let poster;
+    try { poster = new URL(row.poster); } catch {}
+    thumbnail.hidden = !poster || !['https:', 'http:'].includes(poster.protocol);
+    if (!thumbnail.hidden) thumbnail.src = poster.href;
+    thumbnail.onerror = () => { thumbnail.hidden = true; };
+    info.append(thumbnail, title);
     const status = Object.assign(document.createElement('span'), { className: 'status' });
     const bar = Object.assign(document.createElement('progress'), { max: 1, value: 0, hidden: true });
     const tools = Object.assign(document.createElement('div'), { className: 'row-controls' });
@@ -90,7 +101,7 @@ function createRows() {
     const retry = Object.assign(document.createElement('button'), { type: 'button', className: 'details-retry quiet' });
     retry.onclick = () => command('details', { i: row.i });
     tools.append(qualityLabel, size, retry, single);
-    li.append(pick, number, title, status, tools, bar);
+    li.append(pick, number, info, status, tools, bar);
     $('#list').append(li);
     return { cb, number, status, bar, quality, qualityText, size, single, retry, options: '' };
   });
@@ -104,6 +115,7 @@ function statusText(row) {
   if (row.status === 'done') return t('status.done', { quality: ltr(`${row.quality}p`) });
   if (row.status === 'skipped') return t('status.skipped');
   if (row.status === 'stopped') return t('status.stopped');
+  if (row.status === 'cancelled') return t('status.cancelled');
   if (row.status === 'retry') return t('status.retrying', { attempt: num(row.attempts), max: num(3) });
   if (row.status === 'error') return t('status.failed', { error: ltr(row.error) });
   return row.totalBytes > 0
@@ -131,7 +143,7 @@ function render() {
     view.cb.checked = row.selected; view.cb.disabled = !!pending;
     view.number.textContent = digits(numLabel(i, state.rows.length));
     view.status.textContent = statusText(row);
-    view.status.className = `status ${{ done: 'ok', skipped: 'skip', stopped: 'skip', error: 'err' }[row.status] || ''}`;
+    view.status.className = `status ${{ done: 'ok', skipped: 'skip', stopped: 'skip', cancelled: 'skip', error: 'err' }[row.status] || ''}`;
     view.qualityText.textContent = t('list.quality');
     view.quality.setAttribute('aria-label', `${t('list.quality')}: ${decodeEntities(row.title)}`);
     const options = row.qualities.map((option) => option.height).join(',');
@@ -165,7 +177,7 @@ function render() {
     $(`#${id}`).firstElementChild.textContent = num(count);
     $(`#${id}`).className = `count ${count ? cls : ''}`;
   }
-  say(state.error || (!state.rows.length ? t('msg.empty') : state.rows.length < state.playlist.total
+  say(state.error || (state.rows.some((row) => row.status === 'cancelled') ? t('msg.browserCancelled') : '') || (!state.rows.length ? t('msg.empty') : state.rows.length < state.playlist.total
     ? t('msg.partial', { got: num(state.rows.length), total: num(state.playlist.total) }) : ''));
   controls();
 }
