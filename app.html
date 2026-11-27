@@ -54,9 +54,13 @@
 
     <div class="bar">
       <label class="chip"><input id="all" type="checkbox" checked><span data-i18n="list.selectAll">Select all</span></label>
-      <label class="chip"><span data-i18n="list.quality">Highest quality</span>
-        <select id="q">
-          <option value="1080">1080p</option>
+      <label class="chip quality-all"><span data-i18n="list.qualityAll">Quality for all</span>
+        <select id="quality-all" aria-describedby="quality-hint">
+          <option value="" disabled data-i18n="quality.custom">Per-video</option>
+          <option value="9007199254740991" data-i18n="quality.best">Best available</option>
+          <option value="2160">2160p</option>
+          <option value="1440">1440p</option>
+          <option value="1080" selected>1080p</option>
           <option value="720">720p</option>
           <option value="480">480p</option>
           <option value="360">360p</option>
@@ -68,6 +72,7 @@
       <button id="stop" class="quiet" type="button" hidden><svg class="ic"><use href="#i-stop"/></svg><span data-i18n="action.stop">Stop</span></button>
       <button id="go" type="button"><svg class="ic"><use href="#i-download"/></svg><span data-i18n="action.download">Download selected</span></button>
     </div>
+    <p id="quality-hint" class="sr-only" data-i18n="quality.hint">Applies to every video. Uses the best available quality at or below your choice, or the lowest available. You can then adjust individual videos.</p>
     <div id="summary" class="counts" role="status">
       <span id="cSelected" class="count"><b></b><span data-i18n="summary.selected">selected</span></span>
       <span id="cDone" class="count"><b></b><span data-i18n="summary.done">done</span></span>
@@ -75,6 +80,7 @@
       <span id="cFailed" class="count"><b></b><span data-i18n="summary.failed">failed</span></span>
     </div>
     <ol id="list"></ol>
+    <p class="popup-hint" data-i18n="popup.background">Downloads continue when this popup closes.</p>
   </section>
 </main>
 <script type="module" src="app.js"></script>
